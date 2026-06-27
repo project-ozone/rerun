@@ -40,12 +40,21 @@ impl DesignTokensPerTheme {
 mod design_token_access {
     use std::sync::OnceLock;
 
+    use crate::DesignTokens;
+
     use super::DesignTokensPerTheme;
 
+    static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
+
     pub fn design_tokens_per_theme() -> &'static DesignTokensPerTheme {
-        static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
         DESIGN_TOKENS
             .get_or_init(|| DesignTokensPerTheme::load().expect("Failed to load design tokens"))
+    }
+
+    pub fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
+        DESIGN_TOKENS
+            .set(DesignTokensPerTheme { dark, light })
+            .map_err(|_| ())
     }
 }
 
@@ -56,6 +65,8 @@ mod design_token_access {
 
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::{Mutex, RwLock};
+
+    use crate::DesignTokens;
 
     use super::DesignTokensPerTheme;
 
@@ -153,6 +164,12 @@ mod design_token_access {
 
         *current.read()
     }
+
+    pub fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
+        let leaked: &'static DesignTokensPerTheme =
+            Box::leak(Box::new(DesignTokensPerTheme { dark, light }));
+        CURRENT_TOKENS.set(RwLock::new(leaked)).map_err(|_| ())
+    }
 }
 
 pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
@@ -161,6 +178,8 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
         egui::Theme::Light => &design_token_access::design_tokens_per_theme().light,
     }
 }
+
+pub(crate) use design_token_access::try_set_design_tokens;
 
 #[cfg(hot_reload_design_tokens)]
 pub use design_token_access::{hot_reload_design_tokens, install_hot_reload};

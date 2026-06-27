@@ -169,6 +169,14 @@ impl HasDesignTokens for egui::Visuals {
     }
 }
 
+/// Override the embedded design tokens before they're first read.
+///
+/// Returns `Err(())` if the design tokens have already been initialized; in that case `dark` and
+/// `light` are dropped.
+pub fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
+    self::hot_reload_design_tokens::try_set_design_tokens(dark, light)
+}
+
 /// Apply the Rerun design tokens to the given egui context and install image loaders.
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     re_tracing::profile_function!();
