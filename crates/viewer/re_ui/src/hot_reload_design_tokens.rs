@@ -166,6 +166,9 @@ mod design_token_access {
     }
 
     pub fn try_set_design_tokens(dark: DesignTokens, light: DesignTokens) -> Result<(), ()> {
+        if CURRENT_TOKENS.get().is_some() {
+            return Err(()); // Already initialized; drop `dark` and `light` instead of leaking them.
+        }
         let leaked: &'static DesignTokensPerTheme =
             Box::leak(Box::new(DesignTokensPerTheme { dark, light }));
         CURRENT_TOKENS.set(RwLock::new(leaked)).map_err(|_| ())
